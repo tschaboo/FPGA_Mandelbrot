@@ -30,15 +30,6 @@ entity user_interface is
             btnR      : in STD_LOGIC;
             btnC      : in STD_LOGIC;
             
-            enc_a     : in STD_LOGIC;
-            enc_b     : in STD_LOGIC;
-            enc_btn   : in STD_LOGIC;
-            enc_sw    : in STD_LOGIC;
-            adc_cs    : out STD_LOGIC;
-            adc_data0 : in STD_LOGIC;
-            adc_data1 : in STD_LOGIC;
-            adc_clk   : out STD_LOGIC;
-            
             vsync     : in STD_LOGIC;
             x         : out std_logic_vector(34 downto 0);
             y         : out std_logic_vector(34 downto 0);
@@ -48,17 +39,6 @@ end user_interface;
 
 architecture Behavioral of user_interface is
 
-    component pmodad1_interface is
-    port(   clk      : in std_logic;   -- 100MHz clock
-            ADC_CS   : out std_logic;  -- ADC chip select
-            ADC_SCLK : out std_logic;  -- ADC serial clock
-            ADC_D0   : in std_logic;   -- ADC Channel 0
-            ADC_D1   : in std_logic;   -- ADC Channel 1
-            ch0      : out std_logic_vector(11 downto 0);
-            ch1      : out std_logic_vector(11 downto 0)
-            );
-    end component;
-                                                --- these are in 4.32 fixed-point signed binary
     signal x_internal          : unsigned(34 downto 0)  := (others => '0');
     signal y_internal          : unsigned(34 downto 0)  := (others => '0');
 
@@ -73,7 +53,7 @@ architecture Behavioral of user_interface is
     
     signal scale_internal      : unsigned(34 downto 0)  := (23 => '1', others => '0');
     signal scale_internal_last : unsigned(34 downto 0) := (23 => '1', others => '0');
-    signal  scale_left_range_limit  : std_logic := '0';
+    signal scale_left_range_limit  : std_logic := '0';
 
     signal x_buffer            : std_logic_vector(34 downto 0) := (others => '0');
     signal y_buffer            : std_logic_vector(34 downto 0) := (others => '0');
@@ -87,44 +67,11 @@ architecture Behavioral of user_interface is
     signal btnL_sync      : STD_LOGIC := '0';
     signal btnR_sync      : STD_LOGIC := '0';
     signal btnC_sync      : STD_LOGIC := '0';
-    
-    signal enc_quad_meta  : std_logic_vector(1 downto 0) := (others => '0');
-    signal enc_btn_meta   : STD_LOGIC := '0';
-    signal enc_sw_meta    : STD_LOGIC := '0';
-
-    signal enc_quad_safe  : std_logic_vector(1 downto 0) := (others => '0');
-    signal enc_btn_safe   : STD_LOGIC := '0';
-    signal enc_sw_safe    : STD_LOGIC := '0';
-    
-    signal enc_quad_last  : std_logic_vector( 3 downto 0) := (others => '0');
-    signal adc_ch0        : std_logic_vector(11 downto 0) := (others => '0');
-    signal adc_ch1        : std_logic_vector(11 downto 0) := (others => '0');
 begin
 
-i_pmodad1_interface: pmodad1_interface port map (
-    clk      => clk,
-    ADC_CS   => adc_cs,
-    adc_sclk => adc_clk,
-    adc_d0   => adc_data0,
-    adc_d1   => adc_data1,
-    ch0      => adc_ch0,
-    ch1      => adc_ch1);
-    
 clk_proc: process(clk)
     begin
         if rising_edge(clk) then
-            enc_quad_meta <= enc_b & enc_a;
-            enc_btn_meta  <= enc_btn;
-            enc_sw_meta   <= enc_sw;
-                        
-            enc_quad_safe <= enc_quad_meta;
-            enc_btn_safe  <= enc_btn_meta;
-            enc_sw_safe   <= enc_sw_meta;
-            
-            if  enc_quad_last(3 downto 2) /=  enc_quad_safe then 
-               enc_quad_last <= enc_quad_safe & enc_quad_last(3 downto 2);
-            end if;
-                        
       	    x     <= std_logic_vector(x_buffer);
             y     <= std_logic_vector(y_buffer);
             scale <= std_logic_vector(scale_buffer);
@@ -138,19 +85,6 @@ clk_proc: process(clk)
                               - (scale_internal(scale_internal'high-9 downto 0)&"000000000"));
                 scale_buffer <= std_logic_vector(scale_internal);
 
-
-                if adc_ch0(11 downto 9) = "000" then  
-                        x_internal <= x_left;
-                elsif adc_ch0(11 downto 9) = "111" then
-                        x_internal <= x_right;
-                end if;
-
-                if adc_ch1(11 downto 9) = "000" then  
-                        y_internal <= y_up;
-                elsif adc_ch1(11 downto 9) = "111" then
-                        y_internal <= y_down;
-                end if;
-                
                 if btnC_sync = '0' then
                     if btnL_sync = '1' then
                         x_internal <= x_left;
@@ -173,18 +107,6 @@ clk_proc: process(clk)
                     end if;
                 end if;
             end if;
-
-            case enc_quad_safe & enc_quad_last is
-                when "010010" => scale_internal <= scale_right;
-                when "001011" => scale_internal <= scale_right;
-                when "101101" => scale_internal <= scale_right;
-                when "110100" => scale_internal <= scale_right;
-                when "100001" => scale_internal <= scale_left;
-                when "000111" => scale_internal <= scale_left;
-                when "011110" => scale_internal <= scale_left;
-                when "111000" => scale_internal <= scale_left;
-                when others => NULL;
-            end case;                
 
             x_left  <= x_internal - (scale_internal(scale_internal'high-2 downto 0) & "00");
             x_right <= x_internal + (scale_internal(scale_internal'high-2 downto 0) & "00");

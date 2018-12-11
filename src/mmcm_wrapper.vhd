@@ -25,15 +25,13 @@ entity mmcm_wrapper is
         clk_in        : in  std_logic;
         locked        : out std_logic;
         clk_calc      : out std_logic;
-        clk_pixel_x1  : out std_logic;
-        clk_pixel_x5  : out std_logic);
+        clk_pixel_x1  : out std_logic);
 end mmcm_wrapper;
 
 architecture Behavioral of mmcm_wrapper is
     signal clkfb           : std_logic;
     signal clk_calc_u      : std_logic;
     signal clk_pixel_x1_u  : std_logic;
-    signal clk_pixel_x5_u  : std_logic;
 begin
 
 MMCME2_BASE_inst : MMCME2_BASE
@@ -46,7 +44,7 @@ MMCME2_BASE_inst : MMCME2_BASE
       -- CLKOUT0_DIVIDE - CLKOUT6_DIVIDE: Divide amount for each CLKOUT (1-128)
       CLKOUT0_DIVIDE_F => 5.0,   -- Divide amount for CLKOUT0 (1.000-128.000).
       CLKOUT1_DIVIDE   => 15,
-      CLKOUT2_DIVIDE   => 3,
+      CLKOUT2_DIVIDE   => 1,
       CLKOUT3_DIVIDE   => 1,
       CLKOUT4_DIVIDE   => 1,
       CLKOUT5_DIVIDE   => 1,
@@ -77,7 +75,7 @@ MMCME2_BASE_inst : MMCME2_BASE
       CLKOUT0B  => open,         -- 1-bit output: Inverted CLKOUT0
       CLKOUT1   => clk_pixel_x1_u, -- 1-bit output: CLKOUT1
       CLKOUT1B  => open,         -- 1-bit output: Inverted CLKOUT1
-      CLKOUT2   => clk_pixel_x5_u, -- 1-bit output: CLKOUT2
+      CLKOUT2   => open, -- 1-bit output: CLKOUT2
       CLKOUT2B  => open,         -- 1-bit output: Inverted CLKOUT2
       CLKOUT3   => open,         -- 1-bit output: CLKOUT3
       CLKOUT3B  => open,         -- 1-bit output: Inverted CLKOUT3
@@ -106,8 +104,4 @@ clk_pixel_x1_bufg : bufg PORT MAP (
     i => clk_pixel_x1_u,
     o => clk_pixel_x1);
 
-clk_pixel_x5_bufg : bufg PORT MAP (
-        i => clk_pixel_x5_u,
-        o => clk_pixel_x5);
-    
 end Behavioral;

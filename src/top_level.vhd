@@ -53,17 +53,7 @@ use UNISIM.vcomponents.all;
 
 entity top_level is
     Port ( 
--------------------------------------
--- Genesys2 has differnetal clock
--------------------------------------      
-        clk200_p    : in STD_LOGIC;
-        clk200_n    : in STD_LOGIC;
-	fan_pwm     : out STD_LOGIC;
--------------------------------------
--- Nexys Video has single ended clock  
--------------------------------------      
         clk100      : in STD_LOGIC;
-
         
         btnU      : in STD_LOGIC;
         btnD      : in STD_LOGIC;
@@ -71,49 +61,22 @@ entity top_level is
         btnR      : in STD_LOGIC;
         btnC      : in STD_LOGIC;
         
-        pmod_enc_a     : in  STD_LOGIC;
-        pmod_enc_b     : in  STD_LOGIC;
-        pmod_enc_btn   : in  STD_LOGIC;
-        pmod_enc_sw    : in  STD_LOGIC;
-        pmod_adc_cs    : out STD_LOGIC;
-        pmod_adc_data0 : in  STD_LOGIC;
-        pmod_adc_data1 : in  STD_LOGIC;
-        pmod_adc_clk   : out STD_LOGIC;
-        
-        hdmi_tx_rscl  : out   std_logic;
-        hdmi_tx_rsda  : inout std_logic;
-        hdmi_tx_hpd   : in    std_logic;
-        hdmi_tx_cec   : inout std_logic;
-        
-        hdmi_tx_clk_p : out std_logic;
-        hdmi_tx_clk_n : out std_logic;
-        hdmi_tx_p     : out std_logic_vector(2 downto 0);
-        hdmi_tx_n     : out std_logic_vector(2 downto 0)
+        VGA_R   : out std_logic_vector(3 downto 0);
+        VGA_G   : out std_logic_vector(3 downto 0);
+        VGA_B   : out std_logic_vector(3 downto 0);
+        VGA_HS  : out std_logic;
+        VGA_VS  : out std_logic
 );
 end top_level;
 
 architecture Behavioral of top_level is
-    --------------------------------------------------------
-    --- One of these has to be set to 1, the others to zero
-    --------------------------------------------------------
-    constant is_genesys2      : integer :=  1;
-    constant is_nexys_video   : integer :=  0;
-    --------------------------------------------------------
-    --------------------------------------------------------
-    constant stages_nexys     : integer :=  70;
-    constant stages_genesys2  : integer :=  85;
-
-    constant lut_mults_nexys     : integer :=  0;
-    constant lut_mults_genesys2  : integer :=  2;
-
     constant clocks_per_pixel : integer :=  3;
     
-    constant stages    : integer := is_genesys2 * stages_genesys2 + is_nexys_video * stages_nexys;
-    constant lut_mults : integer := is_genesys2 * lut_mults_genesys2 + is_nexys_video * lut_mults_nexys;
+    constant stages    : integer := 30;
+    constant lut_mults : integer := 2;
     
     signal clk_calc      : std_logic;
     signal clk_pixel_x1  : std_logic;
-    signal clk_pixel_x5  : std_logic;
 
     signal blank : std_logic := '0';
     signal hsync : std_logic := '0';
@@ -121,27 +84,14 @@ architecture Behavioral of top_level is
     signal field         : std_logic;
     signal interlaced    : std_logic;
 
-    component xadc_temp is
-    Port ( clk100   : in  STD_LOGIC;
-           temp_k   : out STD_LOGIC_VECTOR (8 downto 0));
-    end component;
-
-    signal temp_k   : STD_LOGIC_VECTOR (8 downto 0);
- 
-    component fan_pwm_control is
-    Port ( clk100 : in STD_LOGIC;
-           temp_k : in STD_LOGIC_VECTOR (8 downto 0);
-           fan_pwm : out STD_LOGIC);
-    end component;
-
     component mmcm_wrapper is
         generic ( div_to_25MHz  : integer );
         Port (
             clk_in        : in  std_logic;
             locked        : out std_logic;
             clk_calc      : out std_logic;
-            clk_pixel_x1  : out std_logic;
-            clk_pixel_x5  : out std_logic);
+            clk_pixel_x1  : out std_logic
+         );
     end component;
 
     component vga_gen_720p is
@@ -176,15 +126,6 @@ architecture Behavioral of top_level is
             btnL      : in STD_LOGIC;
             btnR      : in STD_LOGIC;
             btnC      : in STD_LOGIC;
-
-            enc_a     : in STD_LOGIC;
-            enc_b     : in STD_LOGIC;
-            enc_btn   : in STD_LOGIC;
-            enc_sw    : in STD_LOGIC;
-            adc_cs    : out STD_LOGIC;
-            adc_data0 : in STD_LOGIC;
-            adc_data1 : in STD_LOGIC;
-            adc_clk   : out STD_LOGIC;
 
             vsync     : in STD_LOGIC;
             x         : out std_logic_vector(34 downto 0);
@@ -285,29 +226,8 @@ architecture Behavioral of top_level is
     signal vga_green     : std_logic_vector(7 downto 0);
     signal vga_blue      : std_logic_vector(7 downto 0);
     signal vga_blank     : std_logic;
-    signal reset         : std_logic;
-    component vga_to_hdmi is
-        port ( pixel_clk    : in std_logic;
-               pixel_clk_x5 : in std_logic;
-               reset  : in std_logic;
 
-               vga_hsync : in std_logic;
-               vga_vsync : in std_logic;
-               vga_red   : in std_logic_vector(7 downto 0);
-               vga_green : in std_logic_vector(7 downto 0);
-               vga_blue  : in std_logic_vector(7 downto 0);
-               vga_blank : in std_logic;
-               
-               hdmi_tx_rscl  : out   std_logic;
-               hdmi_tx_rsda  : inout std_logic;
-               hdmi_tx_hpd   : in    std_logic;
-               hdmi_tx_cec   : inout std_logic;
-               hdmi_tx_clk_p : out   std_logic;
-               hdmi_tx_clk_n : out   std_logic;
-               hdmi_tx_p     : out   std_logic_vector(2 downto 0);
-               hdmi_tx_n     : out   std_logic_vector(2 downto 0)
-               );
-    end component;
+    signal reset         : std_logic;
 
     signal locked        : std_logic;
     signal clkfb         : std_logic;
@@ -316,57 +236,16 @@ architecture Behavioral of top_level is
 begin
     reset <= not locked;
 
-g0: if is_genesys2 = 1 generate
-    
------------------------------------------------
--- For the Genesys2 - 200MHz differential clock
------------------------------------------------
-clk200_buff: ibufds port map
-    (
-        i => clk200_p,
-        ib => clk200_n,
-        o => mmcm_clk_in
-    );
-
-i_clk_gen0 : mmcm_wrapper generic map (
-       div_to_25MHz => 8  -- For a 200Mhz Clk
-    ) port map (
-      clk_in       => mmcm_clk_in,
-      locked       => locked,
-      clk_calc     => clk_calc,
-      clk_pixel_x1 => clk_pixel_x1,
-      clk_pixel_x5 => clk_pixel_x5
-);
-end generate;
-
----------------------------------
--- Logic for the Genesys 2 fan
----------------------------------
-i_xadc_temp: xadc_temp port map (
-	clk100 => clk_pixel_x1,
-        temp_k => temp_k);
-
-i_fan_pwm: fan_pwm_control Port map (
-	clk100 => clk_pixel_x1,
-        temp_k => temp_k,
-        fan_pwm => fan_pwm);
-
----------------------------------------------
--- For Nexys Video - single ended 100MHz clk
----------------------------------------------
-g1: if is_nexys_video = 1 generate
     mmcm_clk_in <= clk100;
 
 i_clk_gen1 : mmcm_wrapper generic map (
-       div_to_25MHz => 4  -- For a 200Mhz Clk
+       div_to_25MHz => 4  -- For a 100Mhz Clk
     ) port map (
       clk_in       => mmcm_clk_in,
       locked       => locked,
       clk_calc     => clk_calc,
-      clk_pixel_x1 => clk_pixel_x1,
-      clk_pixel_x5 => clk_pixel_x5
+      clk_pixel_x1 => clk_pixel_x1
 );
-end generate;
 
 i_ui: user_interface  port map (
            clk   => clk_pixel_x1,
@@ -376,22 +255,13 @@ i_ui: user_interface  port map (
            btnR  => btnR,
            btnC  => btnC,
            
-           enc_a     => pmod_enc_a,
-           enc_b     => pmod_enc_b,
-           enc_btn   => pmod_enc_btn,
-           enc_sw    => pmod_enc_sw,
-           adc_cs    => pmod_adc_cs,
-           adc_data0 => pmod_adc_data0,
-           adc_data1 => pmod_adc_data1,
-           adc_clk   => pmod_adc_clk,
-
            vsync => vsync,
            x     => x,
            y     => y,
            scale => scale
           );
 
-i_vga_gen_1080i: vga_gen_1080i port map (
+i_vga_gen_720p: vga_gen_720p port map (
         clk        => clk_pixel_x1,
         blank      => blank, 
         hsync      => hsync,
@@ -465,26 +335,12 @@ i_vga_output: vga_output Port map (
             vga_blue  => vga_blue,
             vga_blank => vga_blank
         );
-        
- i_vga_to_hdmi: vga_to_hdmi port map ( 
-                pixel_clk => clk_pixel_x1,
-                pixel_clk_x5 => clk_pixel_x5,
-                reset        => reset,
-                vga_hsync => vga_hsync, 
-                vga_vsync => vga_vsync,
-                vga_red   => vga_red,
-                vga_green => vga_green,
-                vga_blue  => vga_blue,
-                vga_blank => vga_blank,
-                  
-                hdmi_tx_rscl  => hdmi_tx_rscl, 
-                hdmi_tx_rsda  => hdmi_tx_rsda,
-                hdmi_tx_hpd   => hdmi_tx_hpd,
-                hdmi_tx_cec   => hdmi_tx_cec,
-                hdmi_tx_clk_p => hdmi_tx_clk_p,
-                hdmi_tx_clk_n => hdmi_tx_clk_n,
-                hdmi_tx_p     => hdmi_tx_p,
-                hdmi_tx_n     => hdmi_tx_n
-       );
+    
+    VGA_R <= vga_red(6 downto 3);
+    VGA_G <= vga_green(6 downto 3);
+    VGA_B <= vga_blue(6 downto 3);
+    VGA_HS <= vga_hsync;
+    VGA_VS <= vga_vsync;
+            
 
 end Behavioral;
